@@ -10,7 +10,11 @@ export PATH="$HOME/.local/bin:$PATH"
 curl -LsSf https://astral.sh/uv/install.sh | sh
 export PATH="$HOME/.local/bin:$PATH"
 
+# Codex CLI
 npm install -g @openai/codex
+
+# Playwright + Chromium (insane-search Phase 3 브라우저 폴백용)
+npx -y playwright@latest install --with-deps chromium
 
 python3 --version
 pipx --version
