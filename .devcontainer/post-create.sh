@@ -3,37 +3,109 @@ set -euo pipefail
 
 LOCAL_BIN="$HOME/.local/bin"
 WRAPPER_BIN="$LOCAL_BIN/codex-with-model"
+REAL_OUROBOROS_BIN="$LOCAL_BIN/ouroboros"
+
+upsert_managed_block() {
+  local rc_file="$1"
+  local begin_marker="$2"
+  local end_marker="$3"
+  local block_content="$4"
+  local tmp_file
+
+  touch "$rc_file"
+  tmp_file="$(mktemp)"
+
+  awk -v begin="$begin_marker" -v end="$end_marker" '
+    $0 == begin { skip=1; next }
+    $0 == end   { skip=0; next }
+    !skip       { print }
+  ' "$rc_file" >"$tmp_file"
+
+  {
+    cat "$tmp_file"
+    printf '\n%s\n' "$begin_marker"
+    printf '%s\n' "$block_content"
+    printf '%s\n' "$end_marker"
+  } >"$rc_file"
+
+  rm -f "$tmp_file"
+}
 
 ensure_login_path() {
   local rc_file="$1"
-  local marker="# added by /workspaces/OpenAI/.devcontainer/post-create.sh"
+  local begin_marker="# >>> /workspaces/OpenAI/.devcontainer/post-create.sh path >>>"
+  local end_marker="# <<< /workspaces/OpenAI/.devcontainer/post-create.sh path <<<"
+  local block_content
 
-  touch "$rc_file"
-  if ! grep -Fq "$marker" "$rc_file"; then
-    cat >>"$rc_file" <<EOF
-
-$marker
+  block_content=$(cat <<EOF
 if [ -d "$LOCAL_BIN" ] && [[ ":\$PATH:" != *":$LOCAL_BIN:"* ]]; then
   export PATH="$LOCAL_BIN:\$PATH"
 fi
 EOF
-  fi
+)
+
+  upsert_managed_block "$rc_file" "$begin_marker" "$end_marker" "$block_content"
 }
 
 ensure_shell_helpers() {
   local rc_file="$1"
-  local marker="# added by /workspaces/OpenAI/.devcontainer/post-create.sh shell helpers"
+  local begin_marker="# >>> /workspaces/OpenAI/.devcontainer/post-create.sh shell helpers >>>"
+  local end_marker="# <<< /workspaces/OpenAI/.devcontainer/post-create.sh shell helpers <<<"
+  local block_content
 
-  touch "$rc_file"
-  if ! grep -Fq "$marker" "$rc_file"; then
-    cat >>"$rc_file" <<'EOF'
+  block_content=$(cat <<EOF
+select_ouroboros_codex_model() {
+  local choice=""
+  while true; do
+    echo
+    echo "Select Codex model for this Ouroboros run:"
+    echo "  1) gpt-5.1-codex-max"
+    echo "  2) gpt-5.1-codex-mini"
+    echo "  3) custom"
+    printf "Enter choice [1-3] (default: 1): " >&2
+    read -r choice || true
 
-# added by /workspaces/OpenAI/.devcontainer/post-create.sh shell helpers
+    case "\${choice:-1}" in
+      1)
+        printf '%s\n' "gpt-5.1-codex-max"
+        return 0
+        ;;
+      2)
+        printf '%s\n' "gpt-5.1-codex-mini"
+        return 0
+        ;;
+      3)
+        printf "Enter custom model id: " >&2
+        read -r choice
+        if [[ -n "\${choice:-}" ]]; then
+          printf '%s\n' "\$choice"
+          return 0
+        fi
+        echo "Custom model id cannot be empty." >&2
+        ;;
+      *)
+        echo "Invalid selection." >&2
+        ;;
+    esac
+  done
+}
+
+ouroboros() {
+  if [[ -z "\${OB_CODEX_MODEL:-}" && -t 0 && -t 1 ]]; then
+    export OB_CODEX_MODEL
+    OB_CODEX_MODEL="\$(select_ouroboros_codex_model)"
+  fi
+
+  command "$REAL_OUROBOROS_BIN" "\$@"
+}
+
 ob() {
-  ouroboros "$@"
+  ouroboros "\$@"
 }
 EOF
-  fi
+)
+
+  upsert_managed_block "$rc_file" "$begin_marker" "$end_marker" "$block_content"
 }
 
 export PATH="$LOCAL_BIN:$PATH"
@@ -78,42 +150,6 @@ has_explicit_model_flag() {
   return 1
 }
 
-pick_model_interactive() {
-  local choice=""
-  while true; do
-    echo
-    echo "Select Codex model for this Ouroboros run:"
-    echo "  1) gpt-5.1-codex-max"
-    echo "  2) gpt-5.1-codex-mini"
-    echo "  3) custom"
-    printf "Enter choice [1-3] (default: 1): " >&2
-    read -r choice || true
-
-    case "\${choice:-1}" in
-      1)
-        printf '%s\n' "gpt-5.1-codex-max"
-        return 0
-        ;;
-      2)
-        printf '%s\n' "gpt-5.1-codex-mini"
-        return 0
-        ;;
-      3)
-        printf "Enter custom model id: " >&2
-        read -r choice
-        if [[ -n "\${choice:-}" ]]; then
-          printf '%s\n' "\$choice"
-          return 0
-        fi
-        echo "Custom model id cannot be empty." >&2
-        ;;
-      *)
-        echo "Invalid selection." >&2
-        ;;
-    esac
-  done
-}
-
 main() {
   if has_explicit_model_flag "\$@"; then
     exec "\$REAL_CODEX_BIN" "\$@"
@@ -122,11 +158,7 @@ main() {
   local model="\${OB_CODEX_MODEL:-}"
 
   if [[ -z "\$model" ]]; then
-    if [[ -t 0 && -t 1 ]]; then
-      model="\$(pick_model_interactive)"
-    else
-      model="\$DEFAULT_MODEL"
-    fi
+    model="\$DEFAULT_MODEL"
   fi
 
   echo "[codex-with-model] using model: \$model" >&2
@@ -142,10 +174,9 @@ pipx install --force ouroboros-ai
 
 if command -v ouroboros >/dev/null 2>&1; then
   ouroboros setup --runtime codex --non-interactive || true
-
-  ouroboros config set orchestrator.runtime_backend codex || true
-  ouroboros config set orchestrator.codex_cli_path "$WRAPPER_BIN" || true
-  ouroboros config validate || true
+  "$REAL_OUROBOROS_BIN" config set orchestrator.runtime_backend codex || true
+  "$REAL_OUROBOROS_BIN" config set orchestrator.codex_cli_path "$WRAPPER_BIN" || true
+  "$REAL_OUROBOROS_BIN" config validate || true
 fi
 
 npx -y playwright@latest install --with-deps chromium
@@ -155,9 +186,9 @@ pipx --version
 node --version
 uv --version
 codex --version
-ouroboros --version
+"$REAL_OUROBOROS_BIN" --version
 
 echo
 echo "Setup complete."
-echo "New Ouroboros runs will prompt for a Codex model."
 echo "Open a new terminal, then run: ouroboros"
+echo "You will be prompted to select a Codex model before Ouroboros runs."
