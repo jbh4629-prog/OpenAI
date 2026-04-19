@@ -55,50 +55,47 @@ ensure_shell_helpers() {
   block_content=$(cat <<'EOF'
 select_ouroboros_codex_model() {
   local choice=""
-  while true; do
-    echo
-    echo "Select Codex model for this Ouroboros run:"
-    echo "  1) gpt-5.1-codex-max"
-    echo "  2) gpt-5.1-codex-mini"
-    echo "  3) custom"
-    printf "Enter choice [1-3] (default: 1): " >&2
-    read -r choice || true
+  local default_model="gpt-5.1-codex-max"
 
-    case "${choice:-1}" in
-      1)
-        printf '%s\n' "gpt-5.1-codex-max"
-        return 0
-        ;;
-      2)
-        printf '%s\n' "gpt-5.1-codex-mini"
-        return 0
-        ;;
-      3)
-        printf "Enter custom model id: " >&2
-        read -r choice
-        if [[ -n "${choice:-}" ]]; then
-          printf '%s\n' "$choice"
-          return 0
-        fi
-        echo "Custom model id cannot be empty." >&2
-        ;;
-      *)
-        echo "Invalid selection." >&2
-        ;;
-    esac
-  done
+  echo
+  echo "Codex CLI model presets:"
+  echo "  1) gpt-5.1-codex-max"
+  echo "  2) gpt-5.1-codex-mini"
+  echo "  c) other supported / legacy model id"
+  printf "Codex model [%s]: " "$default_model" >&2
+
+  read -r choice || true
+  choice="${choice:-$default_model}"
+
+  case "$choice" in
+    1|max|gpt-5.1-codex-max)
+      printf '%s\n' "gpt-5.1-codex-max"
+      ;;
+    2|mini|gpt-5.1-codex-mini)
+      printf '%s\n' "gpt-5.1-codex-mini"
+      ;;
+    c|C|custom|other)
+      printf "Enter exact Codex model id: " >&2
+      read -r choice
+      if [[ -z "${choice:-}" ]]; then
+        echo "Model id cannot be empty." >&2
+        return 1
+      fi
+      printf '%s\n' "$choice"
+      ;;
+    *)
+      printf '%s\n' "$choice"
+      ;;
+  esac
 }
 
 ouroboros() {
-  local real_ouroboros_bin
-  real_ouroboros_bin="$(command -v ouroboros)"
-
   if [[ -z "${OB_CODEX_MODEL:-}" && -t 0 && -t 1 ]]; then
     export OB_CODEX_MODEL
     OB_CODEX_MODEL="$(select_ouroboros_codex_model)"
   fi
 
-  command "$real_ouroboros_bin" "$@"
+  command ouroboros "$@"
 }
 
 ob() {
