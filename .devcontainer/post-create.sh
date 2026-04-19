@@ -3,7 +3,6 @@ set -euo pipefail
 
 LOCAL_BIN="$HOME/.local/bin"
 WRAPPER_BIN="$LOCAL_BIN/codex-with-model"
-REAL_OUROBOROS_BIN="$LOCAL_BIN/ouroboros"
 
 upsert_managed_block() {
   local rc_file="$1"
@@ -53,7 +52,7 @@ ensure_shell_helpers() {
   local end_marker="# <<< /workspaces/OpenAI/.devcontainer/post-create.sh shell helpers <<<"
   local block_content
 
-  block_content=$(cat <<EOF
+  block_content=$(cat <<'EOF'
 select_ouroboros_codex_model() {
   local choice=""
   while true; do
@@ -65,7 +64,7 @@ select_ouroboros_codex_model() {
     printf "Enter choice [1-3] (default: 1): " >&2
     read -r choice || true
 
-    case "\${choice:-1}" in
+    case "${choice:-1}" in
       1)
         printf '%s\n' "gpt-5.1-codex-max"
         return 0
@@ -77,8 +76,8 @@ select_ouroboros_codex_model() {
       3)
         printf "Enter custom model id: " >&2
         read -r choice
-        if [[ -n "\${choice:-}" ]]; then
-          printf '%s\n' "\$choice"
+        if [[ -n "${choice:-}" ]]; then
+          printf '%s\n' "$choice"
           return 0
         fi
         echo "Custom model id cannot be empty." >&2
@@ -91,16 +90,19 @@ select_ouroboros_codex_model() {
 }
 
 ouroboros() {
-  if [[ -z "\${OB_CODEX_MODEL:-}" && -t 0 && -t 1 ]]; then
+  local real_ouroboros_bin
+  real_ouroboros_bin="$(command -v ouroboros)"
+
+  if [[ -z "${OB_CODEX_MODEL:-}" && -t 0 && -t 1 ]]; then
     export OB_CODEX_MODEL
-    OB_CODEX_MODEL="\$(select_ouroboros_codex_model)"
+    OB_CODEX_MODEL="$(select_ouroboros_codex_model)"
   fi
 
-  command "$REAL_OUROBOROS_BIN" "\$@"
+  command "$real_ouroboros_bin" "$@"
 }
 
 ob() {
-  ouroboros "\$@"
+  ouroboros "$@"
 }
 EOF
 )
@@ -115,7 +117,7 @@ ensure_login_path "$HOME/.profile"
 ensure_shell_helpers "$HOME/.bashrc"
 
 python3 -m pip install --user --upgrade pipx
-python3 -m pipx ensurepath
+python3 -m pipx ensurepath || true
 
 curl -LsSf https://astral.sh/uv/install.sh | sh
 export PATH="$LOCAL_BIN:$PATH"
@@ -173,20 +175,23 @@ chmod +x "$WRAPPER_BIN"
 pipx install --force ouroboros-ai
 
 if command -v ouroboros >/dev/null 2>&1; then
+  REAL_OUROBOROS_BIN="$(command -v ouroboros)"
+
   ouroboros setup --runtime codex --non-interactive || true
   "$REAL_OUROBOROS_BIN" config set orchestrator.runtime_backend codex || true
   "$REAL_OUROBOROS_BIN" config set orchestrator.codex_cli_path "$WRAPPER_BIN" || true
   "$REAL_OUROBOROS_BIN" config validate || true
 fi
 
-npx -y playwright@latest install --with-deps chromium
+npx -y playwright@latest install --with-deps chromium || true
 
 python3 --version
 pipx --version
 node --version
 uv --version
 codex --version
-"$REAL_OUROBOROS_BIN" --version
+command -v ouroboros
+ouroboros --version
 
 echo
 echo "Setup complete."
