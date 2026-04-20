@@ -36,11 +36,11 @@ ensure_login_path() {
   local end_marker="# <<< /workspaces/OpenAI/.devcontainer/post-create.sh path <<<"
   local block_content
 
-  block_content=$(cat <<EOF
+  block_content=$(cat <<EOF2
 if [ -d "$LOCAL_BIN" ] && [[ ":\$PATH:" != *":$LOCAL_BIN:"* ]]; then
   export PATH="$LOCAL_BIN:\$PATH"
 fi
-EOF
+EOF2
 )
 
   upsert_managed_block "$rc_file" "$begin_marker" "$end_marker" "$block_content"
@@ -52,7 +52,7 @@ ensure_shell_helpers() {
   local end_marker="# <<< /workspaces/OpenAI/.devcontainer/post-create.sh shell helpers <<<"
   local block_content
 
-  block_content=$(cat <<'EOF'
+  block_content=$(cat <<'EOF2'
 select_ouroboros_codex_model() {
   local choice=""
   local model=""
@@ -98,6 +98,18 @@ select_ouroboros_codex_model() {
   done
 }
 
+_has_flag() {
+  local needle="$1"
+  shift
+  local arg
+  for arg in "$@"; do
+    if [[ "$arg" == "$needle" || "$arg" == "$needle="* ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 ouroboros() {
   local real_ouroboros_bin
   real_ouroboros_bin="$(type -P ouroboros)"
@@ -107,13 +119,30 @@ ouroboros() {
     OB_CODEX_MODEL="$(select_ouroboros_codex_model)" || return 1
   fi
 
-  command "$real_ouroboros_bin" "$@"
+  local -a args=("$@")
+
+  # IMPORTANT: `ouroboros init` defaults its adapter backend to LiteLLM unless
+  # `--llm-backend` is passed explicitly, even when config says codex.
+  if [[ ${#args[@]} -ge 1 && "${args[0]}" == "init" ]]; then
+    if ! _has_flag "--llm-backend" "${args[@]}"; then
+      args=("init" "--llm-backend" "codex" "${args[@]:1}")
+    fi
+  fi
+
+  # Helpful for MCP launches from the terminal as well.
+  if [[ ${#args[@]} -ge 2 && "${args[0]}" == "mcp" && "${args[1]}" == "serve" ]]; then
+    if ! _has_flag "--llm-backend" "${args[@]}"; then
+      args=("mcp" "serve" "--llm-backend" "codex" "${args[@]:2}")
+    fi
+  fi
+
+  command "$real_ouroboros_bin" "${args[@]}"
 }
 
 ob() {
   ouroboros "$@"
 }
-EOF
+EOF2
 )
 
   upsert_managed_block "$rc_file" "$begin_marker" "$end_marker" "$block_content"
@@ -132,10 +161,9 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 export PATH="$LOCAL_BIN:$PATH"
 
 npm install -g @openai/codex
-
 REAL_CODEX_BIN="$(command -v codex)"
 
-cat >"$WRAPPER_BIN" <<EOF
+cat >"$WRAPPER_BIN" <<EOF2
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -167,7 +195,6 @@ main() {
   fi
 
   local model="\${OB_CODEX_MODEL:-}"
-
   if [[ -z "\$model" ]]; then
     model="\$DEFAULT_MODEL"
   fi
@@ -177,59 +204,50 @@ main() {
 }
 
 main "\$@"
-EOF
-
+EOF2
 chmod +x "$WRAPPER_BIN"
 
-# Install Ouroboros with LiteLLM extra so init won't die if any path still imports it.
+# Install LiteLLM extra as a safe optional dependency so LiteLLM code paths do not crash
+# if the package touches them. Ouroboros pins safe LiteLLM versions.
 pipx install --force "ouroboros-ai[litellm]"
 
 if command -v ouroboros >/dev/null 2>&1; then
   REAL_OUROBOROS_BIN="$(command -v ouroboros)"
   CONFIG_PATH="$HOME/.ouroboros/config.yaml"
 
-  ouroboros setup --runtime codex --non-interactive || true
+  "$REAL_OUROBOROS_BIN" setup --runtime codex --non-interactive || true
 
+  # Write the ACTUAL config keys the package reads.
   python3 - <<PY
 from pathlib import Path
-import re
+import yaml
 
 config_path = Path("$CONFIG_PATH")
-text = config_path.read_text() if config_path.exists() else ""
-
-def upsert_top_level(text: str, key: str, value: str) -> str:
-    pattern = rf'(?m)^{re.escape(key)}:.*$'
-    line = f"{key}: {value}"
-    if re.search(pattern, text):
-        return re.sub(pattern, line, text)
-    if text and not text.endswith("\n"):
-        text += "\n"
-    return text + line + "\n"
-
-def upsert_orchestrator_key(text: str, key: str, value: str) -> str:
-    block_pat = r'(?ms)^orchestrator:\n(?P<body>(?:^[ \t].*\n?)*)'
-    m = re.search(block_pat, text)
-    new_line = f"  {key}: {value}"
-    if m:
-        body = m.group("body") or ""
-        key_pat = rf'(?m)^[ \t]+{re.escape(key)}:.*$'
-        if re.search(key_pat, body):
-            body = re.sub(key_pat, new_line, body)
-        else:
-            if body and not body.endswith("\n"):
-                body += "\n"
-            body += new_line + "\n"
-        return text[:m.start()] + "orchestrator:\n" + body + text[m.end():]
-    if text and not text.endswith("\n"):
-        text += "\n"
-    return text + "orchestrator:\n" + new_line + "\n"
-
-text = upsert_top_level(text, "llm_backend", "codex")
-text = upsert_orchestrator_key(text, "runtime_backend", "codex")
-text = upsert_orchestrator_key(text, "codex_cli_path", '"' + "$WRAPPER_BIN" + '"')
-
 config_path.parent.mkdir(parents=True, exist_ok=True)
-config_path.write_text(text)
+
+data = {}
+if config_path.exists():
+    loaded = yaml.safe_load(config_path.read_text())
+    if isinstance(loaded, dict):
+        data = loaded
+
+# Remove stale incorrect key from earlier attempts.
+data.pop("llm_backend", None)
+
+llm = data.setdefault("llm", {})
+if not isinstance(llm, dict):
+    llm = {}
+    data["llm"] = llm
+llm["backend"] = "codex"
+
+orchestrator = data.setdefault("orchestrator", {})
+if not isinstance(orchestrator, dict):
+    orchestrator = {}
+    data["orchestrator"] = orchestrator
+orchestrator["runtime_backend"] = "codex"
+orchestrator["codex_cli_path"] = "$WRAPPER_BIN"
+
+config_path.write_text(yaml.dump(data, default_flow_style=False, sort_keys=False))
 print(config_path)
 PY
 
@@ -238,6 +256,7 @@ PY
   "$REAL_OUROBOROS_BIN" config show || true
 fi
 
+# Optional browser deps; do not fail container creation on this.
 npx -y playwright@latest install --with-deps chromium || true
 
 python3 --version
@@ -250,5 +269,5 @@ ouroboros --version
 
 echo
 echo "Setup complete."
-echo "Open a new terminal, then run: ouroboros"
-echo "You will be prompted to select a Codex model before Ouroboros runs."
+echo "Open a new terminal, then run: ouroboros init \"your idea here\""
+echo "The wrapper will prompt for a Codex model and automatically inject --llm-backend codex for init."
