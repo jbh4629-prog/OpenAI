@@ -55,47 +55,59 @@ ensure_shell_helpers() {
   block_content=$(cat <<'EOF'
 select_ouroboros_codex_model() {
   local choice=""
-  local default_model="gpt-5.1-codex-max"
+  local model=""
 
-  echo
-  echo "Codex CLI model presets:"
-  echo "  1) gpt-5.1-codex-max"
-  echo "  2) gpt-5.1-codex-mini"
-  echo "  c) other supported / legacy model id"
-  printf "Codex model [%s]: " "$default_model" >&2
+  while true; do
+    echo
+    echo "Select Codex CLI model:"
+    echo "  1) gpt-5.1-codex-max"
+    echo "  2) gpt-5.1-codex-mini"
+    echo "  3) other supported / legacy model id"
+    echo "  4) cancel"
+    printf "Choose [1-4] (default: 1): " >&2
 
-  read -r choice || true
-  choice="${choice:-$default_model}"
+    read -r choice || true
+    choice="${choice:-1}"
 
-  case "$choice" in
-    1|max|gpt-5.1-codex-max)
-      printf '%s\n' "gpt-5.1-codex-max"
-      ;;
-    2|mini|gpt-5.1-codex-mini)
-      printf '%s\n' "gpt-5.1-codex-mini"
-      ;;
-    c|C|custom|other)
-      printf "Enter exact Codex model id: " >&2
-      read -r choice
-      if [[ -z "${choice:-}" ]]; then
+    case "$choice" in
+      1)
+        printf '%s\n' "gpt-5.1-codex-max"
+        return 0
+        ;;
+      2)
+        printf '%s\n' "gpt-5.1-codex-mini"
+        return 0
+        ;;
+      3)
+        printf "Enter exact Codex model id: " >&2
+        read -r model || true
+        if [[ -n "${model:-}" ]]; then
+          printf '%s\n' "$model"
+          return 0
+        fi
         echo "Model id cannot be empty." >&2
+        ;;
+      4)
+        echo "Cancelled." >&2
         return 1
-      fi
-      printf '%s\n' "$choice"
-      ;;
-    *)
-      printf '%s\n' "$choice"
-      ;;
-  esac
+        ;;
+      *)
+        echo "Invalid selection." >&2
+        ;;
+    esac
+  done
 }
 
 ouroboros() {
+  local real_ouroboros_bin
+  real_ouroboros_bin="$(command -v ouroboros)"
+
   if [[ -z "${OB_CODEX_MODEL:-}" && -t 0 && -t 1 ]]; then
     export OB_CODEX_MODEL
-    OB_CODEX_MODEL="$(select_ouroboros_codex_model)"
+    OB_CODEX_MODEL="$(select_ouroboros_codex_model)" || return 1
   fi
 
-  command ouroboros "$@"
+  command "$real_ouroboros_bin" "$@"
 }
 
 ob() {
