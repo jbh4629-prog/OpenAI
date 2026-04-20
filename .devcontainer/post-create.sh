@@ -100,7 +100,7 @@ select_ouroboros_codex_model() {
 
 ouroboros() {
   local real_ouroboros_bin
-  real_ouroboros_bin="$(command -v ouroboros)"
+  real_ouroboros_bin="$(type -P ouroboros)"
 
   if [[ -z "${OB_CODEX_MODEL:-}" && -t 0 && -t 1 ]]; then
     export OB_CODEX_MODEL
@@ -181,18 +181,59 @@ EOF
 
 chmod +x "$WRAPPER_BIN"
 
+# Install Ouroboros with LiteLLM extra so init won't die if any path still imports it.
 pipx install --force "ouroboros-ai[litellm]"
 
 if command -v ouroboros >/dev/null 2>&1; then
   REAL_OUROBOROS_BIN="$(command -v ouroboros)"
+  CONFIG_PATH="$HOME/.ouroboros/config.yaml"
 
   ouroboros setup --runtime codex --non-interactive || true
 
-  "$REAL_OUROBOROS_BIN" config set llm_backend codex || true
-  "$REAL_OUROBOROS_BIN" config set orchestrator.runtime_backend codex || true
-  "$REAL_OUROBOROS_BIN" config set orchestrator.codex_cli_path "$WRAPPER_BIN" || true
+  python3 - <<PY
+from pathlib import Path
+import re
 
-  cat "$HOME/.ouroboros/config.yaml" || true
+config_path = Path("$CONFIG_PATH")
+text = config_path.read_text() if config_path.exists() else ""
+
+def upsert_top_level(text: str, key: str, value: str) -> str:
+    pattern = rf'(?m)^{re.escape(key)}:.*$'
+    line = f"{key}: {value}"
+    if re.search(pattern, text):
+        return re.sub(pattern, line, text)
+    if text and not text.endswith("\n"):
+        text += "\n"
+    return text + line + "\n"
+
+def upsert_orchestrator_key(text: str, key: str, value: str) -> str:
+    block_pat = r'(?ms)^orchestrator:\n(?P<body>(?:^[ \t].*\n?)*)'
+    m = re.search(block_pat, text)
+    new_line = f"  {key}: {value}"
+    if m:
+        body = m.group("body") or ""
+        key_pat = rf'(?m)^[ \t]+{re.escape(key)}:.*$'
+        if re.search(key_pat, body):
+            body = re.sub(key_pat, new_line, body)
+        else:
+            if body and not body.endswith("\n"):
+                body += "\n"
+            body += new_line + "\n"
+        return text[:m.start()] + "orchestrator:\n" + body + text[m.end():]
+    if text and not text.endswith("\n"):
+        text += "\n"
+    return text + "orchestrator:\n" + new_line + "\n"
+
+text = upsert_top_level(text, "llm_backend", "codex")
+text = upsert_orchestrator_key(text, "runtime_backend", "codex")
+text = upsert_orchestrator_key(text, "codex_cli_path", '"' + "$WRAPPER_BIN" + '"')
+
+config_path.parent.mkdir(parents=True, exist_ok=True)
+config_path.write_text(text)
+print(config_path)
+PY
+
+  cat "$CONFIG_PATH" || true
   "$REAL_OUROBOROS_BIN" config validate || true
   "$REAL_OUROBOROS_BIN" config show || true
 fi
