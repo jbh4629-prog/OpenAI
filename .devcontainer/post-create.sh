@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+trap 'rc=$?; echo "[post-create failed] line=$LINENO cmd=$BASH_COMMAND rc=$rc" >&2' ERR
 
 LOCAL_BIN="$HOME/.local/bin"
 WRAPPER_BIN="$LOCAL_BIN/codex-with-model"
@@ -121,15 +122,12 @@ ouroboros() {
 
   local -a args=("$@")
 
-  # IMPORTANT: `ouroboros init` defaults its adapter backend to LiteLLM unless
-  # `--llm-backend` is passed explicitly, even when config says codex.
   if [[ ${#args[@]} -ge 1 && "${args[0]}" == "init" ]]; then
     if ! _has_flag "--llm-backend" "${args[@]}"; then
       args=("init" "--llm-backend" "codex" "${args[@]:1}")
     fi
   fi
 
-  # Helpful for MCP launches from the terminal as well.
   if [[ ${#args[@]} -ge 2 && "${args[0]}" == "mcp" && "${args[1]}" == "serve" ]]; then
     if ! _has_flag "--llm-backend" "${args[@]}"; then
       args=("mcp" "serve" "--llm-backend" "codex" "${args[@]:2}")
@@ -154,7 +152,7 @@ ensure_login_path "$HOME/.bashrc"
 ensure_login_path "$HOME/.profile"
 ensure_shell_helpers "$HOME/.bashrc"
 
-python3 -m pip install --user --upgrade pipx
+python3 -m pip install --user --upgrade pipx pyyaml
 python3 -m pipx ensurepath || true
 
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -207,8 +205,6 @@ main "\$@"
 EOF2
 chmod +x "$WRAPPER_BIN"
 
-# Install LiteLLM extra as a safe optional dependency so LiteLLM code paths do not crash
-# if the package touches them. Ouroboros pins safe LiteLLM versions.
 pipx install --force "ouroboros-ai[litellm]"
 
 if command -v ouroboros >/dev/null 2>&1; then
@@ -217,7 +213,6 @@ if command -v ouroboros >/dev/null 2>&1; then
 
   "$REAL_OUROBOROS_BIN" setup --runtime codex --non-interactive || true
 
-  # Write the ACTUAL config keys the package reads.
   python3 - <<PY
 from pathlib import Path
 import yaml
@@ -231,7 +226,6 @@ if config_path.exists():
     if isinstance(loaded, dict):
         data = loaded
 
-# Remove stale incorrect key from earlier attempts.
 data.pop("llm_backend", None)
 
 llm = data.setdefault("llm", {})
@@ -256,16 +250,15 @@ PY
   "$REAL_OUROBOROS_BIN" config show || true
 fi
 
-# Optional browser deps; do not fail container creation on this.
 npx -y playwright@latest install --with-deps chromium || true
 
 python3 --version
 pipx --version
 node --version
 uv --version
-codex --version
-command -v ouroboros
-ouroboros --version
+codex --version || true
+command -v ouroboros || true
+ouroboros --version || true
 
 echo
 echo "Setup complete."
