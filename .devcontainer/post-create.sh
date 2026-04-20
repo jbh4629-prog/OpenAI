@@ -187,9 +187,13 @@ if command -v ouroboros >/dev/null 2>&1; then
   REAL_OUROBOROS_BIN="$(command -v ouroboros)"
 
   ouroboros setup --runtime codex --non-interactive || true
+
+  "$REAL_OUROBOROS_BIN" config set llm_backend codex || true
   "$REAL_OUROBOROS_BIN" config set orchestrator.runtime_backend codex || true
   "$REAL_OUROBOROS_BIN" config set orchestrator.codex_cli_path "$WRAPPER_BIN" || true
+
   "$REAL_OUROBOROS_BIN" config validate || true
+  "$REAL_OUROBOROS_BIN" config show || true
 fi
 
 npx -y playwright@latest install --with-deps chromium || true
