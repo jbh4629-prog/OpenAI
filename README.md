@@ -14,6 +14,15 @@ This implementation does **not** attempt to clone the original project 1:1. Inst
 
 The upstream project is built around a Claude Code plugin, MCP integration, and a broad Python package surface. This repository already provisions **Codex CLI** in the dev container, so the most practical adaptation is a Python orchestrator that shells out to Codex instead of assuming a Claude Code runtime.
 
+## Backend policy
+
+This port uses **Codex CLI only**.
+
+- no OpenAI API client integration
+- no LiteLLM or provider abstraction layer
+- no model SDK wiring inside the repository
+- only local CLI invocation via `subprocess` to the installed `codex` binary
+
 ## What is implemented
 
 - Typer-based CLI with `ooo` entrypoint
@@ -28,6 +37,7 @@ The upstream project is built around a Claude Code plugin, MCP integration, and 
 - MCP server registration
 - Full parity with the upstream agent graph
 - TUI dashboard, event sourcing database, or multi-model consensus router
+- API-based provider integrations
 
 ## Installation
 
