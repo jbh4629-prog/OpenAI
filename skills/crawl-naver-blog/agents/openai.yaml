@@ -1,0 +1,8 @@
+interface:
+  display_name: "Naver Blog Crawl"
+  short_description: "공개 네이버블로그 본문·댓글 수집"
+  default_prompt: "Use $crawl-naver-blog to collect public Naver Blog posts, extract body text and comments, and filter out restricted or promotional pages."
+  brand_color: "#0EA5E9"
+
+policy:
+  allow_implicit_invocation: true
