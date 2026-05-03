@@ -1,0 +1,4 @@
+interface:
+  display_name: "Naver Cafe Crawl"
+  short_description: "Public Naver Cafe search/share extraction"
+  default_prompt: "Use $crawl-naver-cafe to collect public Naver Cafe article bodies and comments from search results."
