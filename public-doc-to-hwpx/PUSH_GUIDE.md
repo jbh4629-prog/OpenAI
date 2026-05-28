@@ -17,7 +17,7 @@ git --version  # 2.x 이상
 - **Repository name**: `public-doc-to-hwpx`
 - **Description** (복사해서 붙여넣기):
   ```
-  AI 콘텐츠를 공공기관 표준 보고서(HWPX)로 다듬는 Codex용 AGENTS + Claude 호환 스킬 — 한 문장 한 줄, 개조식, 두괄식. 4단계 워크플로우 + 4개 양식(1p/풀버전/시행문/이메일).
+  AI 콘텐츠를 공공기관 표준 보고서(HWPX)로 다듬는 Claude Skill — 한 문장 한 줄, 개조식, 두괄식. 4단계 워크플로우 + 4개 양식(1p/풀버전/시행문/이메일).
   ```
 - **Public** 선택
 - **Initialize this repository with**: 모두 **체크 해제** (README, .gitignore, license 모두 생성하지 않음 — 이 패키지에 이미 들어있음)
@@ -29,7 +29,7 @@ git --version  # 2.x 이상
 
 ```bash
 # 압축 푼 디렉토리로 이동
-cd public-doc-to-hwpx
+cd public-doc-to-hwpx-v3
 
 # Git 초기화
 git init -b main
@@ -77,7 +77,7 @@ git push -u origin main
 
 리포 설정 (Settings) 에서:
 
-- **Topics 추가**: `codex`, `agents-md`, `claude-skill`, `hwpx`, `korean`, `report-generator`, `public-doc`, `government-document`
+- **Topics 추가**: `claude-skill`, `hwpx`, `korean`, `report-generator`, `public-doc`, `government-document`
 - **Description** 위에 한 줄 추가 (이미 입력했다면 패스)
 - **Social preview image**: 직접 만든 이미지 업로드 (선택)
 

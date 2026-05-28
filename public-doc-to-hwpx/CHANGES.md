@@ -2,25 +2,7 @@
 
 > 상세 내용은 `SKILL.md` 안의 변경이력 표를 참고. 이 파일은 사용자 친화적 요약.
 
-## 최신 버전: v3.7.0 (2026-05-19)
-
-### v3.7.0 — Codex 포트 완성 + 통합 빌드 진입점
-
-**문제**: 저장소는 실질적으로 동작했지만, Codex 기준으로는 바로 쓰기 어려웠습니다.
-- 루트 `AGENTS.md` 가 없어 Codex용 진입점이 없었음
-- README/가이드에 삭제된 `compose_doc.py`, `layout_optimizer.py` 기준 안내가 남아 있었음
-- `fill_skeleton.py` 가 고정 `/tmp/fill_work` 를 써서 동시 실행 시 충돌 가능성이 있었음
-
-**해결**:
-- `AGENTS.md` 신규 추가 — Codex용 워크플로우, 표준 빌드 명령, 핵심 규칙 정리
-- `scripts/build_document.py` 신규 — `format_1p` / `format_gongmun` / `format_full` 을 한 명령으로 빌드
-- README/SKILL/references/PUSH_GUIDE 전반을 현재 파이프라인 기준으로 정리
-- `fill_skeleton.py` 임시 작업 디렉터리를 고유 temp dir 로 변경해 병렬 실행 충돌 제거
-
-**검증**:
-- `format_1p` 예제 빌드 + `validate.py` 통과
-- `format_gongmun` 예제 빌드 + `fix_gongmun_body.py` + `validate.py` 통과
-- `format_full` 예제 빌드 + `build_full.py` 전체 후처리 + `validate.py` 통과
+## 최신 버전: v3.6.11 (2026-05-13)
 
 ### v3.6.11 — 1p 보고서 마커 자동 정규화
 
@@ -65,7 +47,7 @@
 
 1p 빌드 시 `examples/example_values_1p.json` 참고 — 마커 입력은 자유롭게.
 
-## 누적 변경표
+## 누적 변경표 (v3.6.x)
 
 | 버전 | 변경 |
 |---|---|
@@ -81,7 +63,6 @@
 | v3.6.9 | 위계별 들여쓰기 통일 (양식 슬롯 ↔ 동적 단락) |
 | v3.6.10 | 수신자 라벨/입력 분리 양식 결함 보정 + 들여쓰기 미세 차이 해결 (raw XML `<hp:fwSpace/>`) |
 | **v3.6.11** | **1p 보고서 마커 자동 정규화 + 변경 이력 갱신 프로세스 정착** |
-| **v3.7.0** | **Codex 포트 완성 + `build_document.py` 통합 진입점 + 동시 실행 안전화** |
 
 상세 내용은 `SKILL.md` 변경이력 표 참고.
 
@@ -89,7 +70,6 @@
 
 ```
 public-doc-to-hwpx/
-├── AGENTS.md                  ★ v3.7.0 — Codex 진입점
 ├── SKILL.md                  메인 가이드 + 변경이력 표 + Critical Rules 23개
 ├── CHANGES.md                ← 이 파일 (사용자용 요약)
 ├── RELEASE_CHECKLIST.md      ★ v3.6.11 신규 — 버전 업데이트 시 갱신 파일 체크리스트
@@ -97,7 +77,6 @@ public-doc-to-hwpx/
 ├── LICENSE
 ├── PUSH_GUIDE.md             GitHub 푸시용 일회성 가이드
 ├── scripts/                  빌더 스크립트
-│   ├── build_document.py     ★ v3.7.0 — 통합 빌드 진입점
 ├── templates/                4개 양식 빈 골격
 ├── references/               양식별 상세 가이드
 └── examples/                 예시 values.json

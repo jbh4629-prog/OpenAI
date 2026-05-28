@@ -78,96 +78,97 @@ def fill_skeleton(skeleton_path: Path, values: dict, output_path: Path,
         values, marker_summary = normalize_1p_values(values)
         marker_summary["applied"] = True
 
-    workdir = Path(tempfile.mkdtemp(prefix="fill_work_"))
-    try:
-        with zipfile.ZipFile(skeleton_path, "r") as zf:
-            zf.extractall(workdir)
+    workdir = Path("/tmp/fill_work")
+    if workdir.exists():
+        shutil.rmtree(workdir)
+    workdir.mkdir(parents=True)
 
-        sec_path = workdir / "Contents" / "section0.xml"
-        sec = sec_path.read_text(encoding="utf-8")
+    with zipfile.ZipFile(skeleton_path, "r") as zf:
+        zf.extractall(workdir)
 
-        # v3.6.6: skeleton 결함 보정 (Ⅳ장 들여쓰기 누락 등)
-        defects_summary = {}
-        if fix_defects:
-            sec, defects_summary = apply_skeleton_fixes(sec)
+    sec_path = workdir / "Contents" / "section0.xml"
+    sec = sec_path.read_text(encoding="utf-8")
 
-        # v3.6.4 / 3.6.6: 공문 placeholder 단락 분리 (현재는 SPLIT_PAIRS 비어 있음)
-        n_splits = 0
-        if split_paragraphs:
-            sec, n_splits = split_combined_placeholders(sec)
+    # v3.6.6: skeleton 결함 보정 (Ⅳ장 들여쓰기 누락 등)
+    defects_summary = {}
+    if fix_defects:
+        sec, defects_summary = apply_skeleton_fixes(sec)
 
-        # v3.6.7/3.6.8: 공문 본문 동적 확장 (모든 위계)
-        body_summary = {"extra_paragraphs_inserted": 0, "extra_by_anchor": {}}
-        if expand_body:
-            values, sec, body_summary = apply_body_expansion(values, sec)
+    # v3.6.4 / 3.6.6: 공문 placeholder 단락 분리 (현재는 SPLIT_PAIRS 비어 있음)
+    n_splits = 0
+    if split_paragraphs:
+        sec, n_splits = split_combined_placeholders(sec)
 
-        # 모든 {{토큰}} 찾기
-        tokens_found = set(re.findall(r'\{\{([^}]+)\}\}', sec))
+    # v3.6.7/3.6.8: 공문 본문 동적 확장 (모든 위계)
+    body_summary = {"extra_paragraphs_inserted": 0, "extra_by_anchor": {}}
+    if expand_body:
+        values, sec, body_summary = apply_body_expansion(values, sec)
 
-        # v3.6.10: 양식 라벨 자동 부여 (사용자가 입력 안 해도 라벨 보존)
-        DEFAULT_VALUES = {
-            "text_004": "수신",  # 양식의 '수신' 라벨 자동 부여
-        }
+    # 모든 {{토큰}} 찾기
+    tokens_found = set(re.findall(r'\{\{([^}]+)\}\}', sec))
 
-        # v3.6.8 안전화: EMPTY_MARKER 는 본문 영역 placeholder 에만 적용.
-        BODY_PLACEHOLDERS = {
-            "text_007", "text_008", "text_009",
-            "text_010", "text_011", "text_012", "text_013",
-            "목차_항목_001", "목차_항목_002", "목차_항목_003", "목차_항목_004",
-        }
+    # v3.6.10: 양식 라벨 자동 부여 (사용자가 입력 안 해도 라벨 보존)
+    DEFAULT_VALUES = {
+        "text_004": "수신",  # 양식의 '수신' 라벨 자동 부여
+    }
 
-        # 치환
-        filled_count = 0
-        unfilled = []
-        for token in tokens_found:
-            if token in values and values[token] != "":
-                replacement = xml_escape(values[token])
-                sec = sec.replace(f"{{{{{token}}}}}", replacement)
-                filled_count += 1
-            elif token in DEFAULT_VALUES:
-                # 사용자 입력 없으면 기본 라벨 자동 부여
-                sec = sec.replace(f"{{{{{token}}}}}",
-                                  xml_escape(DEFAULT_VALUES[token]))
-                filled_count += 1
+    # v3.6.8 안전화: EMPTY_MARKER 는 본문 영역 placeholder 에만 적용.
+    BODY_PLACEHOLDERS = {
+        "text_007", "text_008", "text_009",
+        "text_010", "text_011", "text_012", "text_013",
+        "목차_항목_001", "목차_항목_002", "목차_항목_003", "목차_항목_004",
+    }
+
+    # 치환
+    filled_count = 0
+    unfilled = []
+    for token in tokens_found:
+        if token in values and values[token] != "":
+            replacement = xml_escape(values[token])
+            sec = sec.replace(f"{{{{{token}}}}}", replacement)
+            filled_count += 1
+        elif token in DEFAULT_VALUES:
+            # 사용자 입력 없으면 기본 라벨 자동 부여
+            sec = sec.replace(f"{{{{{token}}}}}",
+                              xml_escape(DEFAULT_VALUES[token]))
+            filled_count += 1
+        else:
+            # 본문 placeholder 만 EMPTY_MARKER 처리 (단락 제거 가능)
+            if remove_empty and token in BODY_PLACEHOLDERS:
+                sec = sec.replace(f"{{{{{token}}}}}", EMPTY_MARKER)
             else:
-                # 본문 placeholder 만 EMPTY_MARKER 처리 (단락 제거 가능)
-                if remove_empty and token in BODY_PLACEHOLDERS:
-                    sec = sec.replace(f"{{{{{token}}}}}", EMPTY_MARKER)
-                else:
-                    sec = sec.replace(f"{{{{{token}}}}}", "")
-                unfilled.append(token)
+                sec = sec.replace(f"{{{{{token}}}}}", "")
+            unfilled.append(token)
 
-        # v3.6.8: 빈 placeholder 단락 제거 (본문 영역 한정)
-        empty_summary = {"paragraphs_removed": 0, "markers_cleaned": 0}
-        if remove_empty:
-            sec, n_p_removed, n_marker = remove_empty_marker_paragraphs(sec)
-            empty_summary = {
-                "paragraphs_removed": n_p_removed,
-                "markers_cleaned": n_marker,
-            }
+    # v3.6.8: 빈 placeholder 단락 제거 (본문 영역 한정)
+    empty_summary = {"paragraphs_removed": 0, "markers_cleaned": 0}
+    if remove_empty:
+        sec, n_p_removed, n_marker = remove_empty_marker_paragraphs(sec)
+        empty_summary = {
+            "paragraphs_removed": n_p_removed,
+            "markers_cleaned": n_marker,
+        }
 
-        sec_path.write_text(sec, encoding="utf-8")
+    sec_path.write_text(sec, encoding="utf-8")
 
-        # 제목 갱신 (content.hpf)
-        hpf_path = workdir / "Contents" / "content.hpf"
-        if hpf_path.exists() and values.get("표지_제목"):
-            hpf = hpf_path.read_text(encoding="utf-8")
-            safe = xml_escape(values["표지_제목"])
-            hpf = re.sub(r'<opf:title>[^<]*</opf:title>',
-                         f'<opf:title>{safe}</opf:title>', hpf, count=1)
-            hpf_path.write_text(hpf, encoding="utf-8")
+    # 제목 갱신 (content.hpf)
+    hpf_path = workdir / "Contents" / "content.hpf"
+    if hpf_path.exists() and values.get("표지_제목"):
+        hpf = hpf_path.read_text(encoding="utf-8")
+        safe = xml_escape(values["표지_제목"])
+        hpf = re.sub(r'<opf:title>[^<]*</opf:title>',
+                     f'<opf:title>{safe}</opf:title>', hpf, count=1)
+        hpf_path.write_text(hpf, encoding="utf-8")
 
-        # 재패키징
-        if output_path.exists():
-            output_path.unlink()
-        with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            mt = workdir / "mimetype"
-            zf.write(mt, "mimetype", compress_type=zipfile.ZIP_STORED)
-            for f in sorted(workdir.rglob("*")):
-                if f.is_file() and f.name != "mimetype":
-                    zf.write(f, f.relative_to(workdir).as_posix())
-    finally:
-        shutil.rmtree(workdir, ignore_errors=True)
+    # 재패키징
+    if output_path.exists():
+        output_path.unlink()
+    with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        mt = workdir / "mimetype"
+        zf.write(mt, "mimetype", compress_type=zipfile.ZIP_STORED)
+        for f in sorted(workdir.rglob("*")):
+            if f.is_file() and f.name != "mimetype":
+                zf.write(f, f.relative_to(workdir).as_posix())
 
     return {
         "tokens_in_skeleton": len(tokens_found),
