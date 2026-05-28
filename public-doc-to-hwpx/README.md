@@ -1,6 +1,6 @@
 # public-doc-to-hwpx
 
-> **AI 콘텐츠를 공공기관 표준 보고서로 다듬어 HWPX·메일 본문으로 변환하는 Codex용 AGENTS + Claude 호환 스킬**
+> **AI 콘텐츠를 공공기관 표준 보고서로 다듬어 HWPX·메일 본문으로 변환하는 Claude Skill**
 > 한 문장 한 줄, 개조식, 두괄식 — AI가 없던 시절 한글(hwp)을 쓰던 베테랑 보고서 작성자가 만든 것처럼.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -92,35 +92,53 @@ XML 빌드보다 **글쓰기 품질**을 먼저 생각하는 것이 이 스킬�
 git clone https://github.com/<your-username>/public-doc-to-hwpx.git
 cd public-doc-to-hwpx
 
-# 1페이지 보고서
-python3 scripts/build_document.py \
+# 1페이지 보고서 빌드
+python3 scripts/compose_doc.py input.md output.hwpx \
   --format format_1p \
-  --values examples/example_values_1p.json \
-  --output /tmp/example_1p.hwpx
+  --meta meta.json \
+  --report-path /tmp/optimization_report.md
+```
 
-# 시행문
-python3 scripts/build_document.py \
-  --format format_gongmun \
-  --values examples/example_values_gongmun.json \
-  --output /tmp/example_gongmun.hwpx
+### `input.md` 예시
 
-# 풀버전 보고서
-python3 scripts/build_document.py \
-  --format format_full \
-  --values examples/example_values_full.json \
-  --output /tmp/example_full.hwpx
+```markdown
+# ○○기관 협력사업 실무협의 보고
+
+## 추진배경
+- 한국을 대표하는 공기업과 중소기업과의 상호 협력
+- 판로 개척 어려운 중소기업의 전시·판매 통한 국가경제 발전
+
+## 추진경과
+- (6.15. ○○기관 유선협의)
+  - ○○공사에서 중소기업 제품 판로개척 노력에 감사
+  - 향후 MOU 등 적극 의사표명
+
+## 향후계획
+- MOU 체결에 따른 세부사항 협의 : '12. 6월
+- MOU 체결 : '12. 7월
+```
+
+### `meta.json` 예시
+
+```json
+{
+  "subtitle": "- ○○공사와 중소기업 상생협력을 위한 -",
+  "author": "○○○처장 ○○○",
+  "date": "'25.11.",
+  "phone": "4315"
+}
 ```
 
 ### 결과
 
-- `build_document.py` 가 양식별 표준 후처리와 `validate.py` 까지 한 번에 수행
-- `format_email` 은 HWPX 빌드가 아니라 에이전트가 본문 텍스트를 직접 작성
+- `output.hwpx` — 한글에서 바로 열리는 1페이지 보고서
+- `optimization_report.md` — 자동 적용·검토 권장 사항 리포트
 
 ---
 
 ## 글쓰기 자동 변환 (★ 핵심 차별점)
 
-에이전트가 `values.json` 을 만들기 전에 다음 규칙을 **자동 적용**합니다.
+`layout_optimizer.py` 가 다음을 **자동 적용**합니다.
 
 ### 신뢰도 높음 — 자동 적용
 
@@ -153,22 +171,20 @@ python3 scripts/build_document.py \
 
 ---
 
-## 디렉토리 구조 (v3.7.0)
+## 디렉토리 구조 (v3.6.11)
 
 ```
 public-doc-to-hwpx/
-├── AGENTS.md                                  ★ v3.7.0 — Codex 진입점
-├── SKILL.md                                   # 상세 워크플로우 + Critical Rules 23개 (Claude 호환 가이드)
+├── SKILL.md                                   # 6단계 워크플로우 + Critical Rules 23개 (Claude Skill 진입점)
 ├── README.md                                  # 이 파일
 ├── LICENSE                                    # MIT
-├── CHANGES.md                                 ★ v3.7.0 — 사용자용 누적 변경 요약 (통합본)
+├── CHANGES.md                                 ★ v3.6.11 — 사용자용 누적 변경 요약 (통합본)
 ├── RELEASE_CHECKLIST.md                       ★ v3.6.11 — 버전 업데이트 시 갱신 파일 체크리스트
 ├── PUSH_GUIDE.md                              # GitHub 푸시 워크플로우 안내
 │
-├── scripts/                                   ★ v3.7.0 — 공공기관 문서서식 유지 + 양식별 핫픽스 빌드
+├── scripts/                                   ★ v3.6.11 — 공공기관 문서서식 유지 + 양식별 핫픽스 빌드
 │   │
 │   │  [핵심 빌더]
-│   ├── build_document.py                      ★ v3.7.0 — 1p/시행문/풀버전 통합 CLI 진입점
 │   ├── fill_skeleton.py                       메인 빌더 — 양식 슬롯에 콘텐츠 값 삽입
 │   ├── make_skeleton.py                       새 양식 등록 시 hwpx → 슬롯 토큰화 변환
 │   ├── build_full.py                          ★ v3.5.0 — 풀버전 통합 빌드 워크플로우 (4대 함정 검사)
@@ -211,7 +227,7 @@ public-doc-to-hwpx/
 │   │
 │   └── format_email/                          (이메일은 텍스트만, 양식 불필요)
 │
-├── references/                                에이전트가 작업 중 참조하는 Author 가이드 7개
+├── references/                                Claude가 작업 중 참조하는 Author 가이드 7개
 │   ├── writing-principles.md                  ★ 보고서 작성 원칙 (강의자료 + 사례 통합)
 │   ├── layout-rules.md                        ★ 레이아웃 최적화 규칙
 │   ├── format-selection.md                    양식 선택 결정트리
@@ -231,28 +247,34 @@ public-doc-to-hwpx/
 
 ---
 
-## Codex에서 사용
+## Claude Skill로 설치
 
-이 리포지토리는 Codex 기준으로는 `AGENTS.md`, Claude 기준으로는 `SKILL.md` 를 진입점으로 사용합니다.
-
-### Codex / Cursor
-
-```bash
-# 필요한 빌드만 직접 실행
-python3 scripts/build_document.py --format format_1p --values examples/example_values_1p.json --output /tmp/example_1p.hwpx
-```
-
-이 저장소를 그대로 열면 Codex는 루트 `AGENTS.md` 를 기준으로 작업 흐름을 잡을 수 있습니다.
-
-하위 프로젝트에서 재사용할 때는 `AGENTS.md`, `SKILL.md`, `references/`, `templates/`, `scripts/` 를 함께 복사하는 편이 안전합니다.
+이 리포지토리는 [Claude Skill](https://docs.claude.com/) 형식을 따르며, Claude·Cursor·Codex 등에서 사용 가능합니다.
 
 ### Claude Desktop / Web
 
 ```bash
+# 1. 사용자 스킬 디렉토리에 복사
 cp -r public-doc-to-hwpx ~/.claude/skills/
+
+# 2. Claude 재시작 후, 자연어로 호출
+"매출 실적 보고서 1페이지로 작성해줘"
+"이 내용을 시행문 양식으로 hwpx 만들어줘"
 ```
 
-Claude에서는 `SKILL.md` 의 frontmatter 를 이용해 동일한 워크플로우를 사용할 수 있습니다.
+### Cursor / Codex
+
+`.cursor/rules` 또는 `AGENTS.md` 에 다음 추가:
+
+```yaml
+description: HWPX 보고서 작성 시 public-doc-to-hwpx v3 사용
+globs: ["*.hwpx", "*.md", "*.docx"]
+---
+1. SKILL.md 의 4단계 워크플로우를 따른다
+2. compose_doc.py 한 번으로 빌드 + 후처리 + 검증 자동
+3. layout_optimizer 의 검토 권장 사항을 사용자에게 항상 표시
+4. 1p 양식 1쪽 초과 시 풀버전 변경 권고 (자동 변경 금지)
+```
 
 ---
 
@@ -300,7 +322,7 @@ Claude에서는 `SKILL.md` 의 frontmatter 를 이용해 동일한 워크플로�
 
 ### 4. 「적의를 보이는 것들」 4종 — 빼야 할 군더더기
 
-> 빼도 의미가 유지되면 빼는 것이 원칙. 에이전트가 매핑 전에 자동 점검·경고합니다.
+> 빼도 의미가 유지되면 빼는 것이 원칙. `layout_optimizer.py` 가 자동 점검·경고합니다.
 
 | # | 표현 | 어색함 | 자연스러움 |
 |---|------|--------|-----------|
@@ -343,7 +365,7 @@ Claude에서는 `SKILL.md` 의 frontmatter 를 이용해 동일한 워크플로�
 | 1페이지 보고서 / 이메일 | `□ → ○ → - → *` (행정·실무용) |
 | 풀버전 보고서 / 시행문 | `Ⅰ. → 1. → 가. → (1) → (가) → ①` (정식 행정문서) |
 
-한 문서에서 두 체계를 섞으면 에이전트가 경고합니다.
+한 문서에서 두 체계를 섞으면 `layout_optimizer` 가 경고합니다.
 
 ### 7. 페이지 걸침 방지
 
@@ -403,7 +425,7 @@ Claude에서는 `SKILL.md` 의 frontmatter 를 이용해 동일한 워크플로�
 
 - [chrisryugj/kordoc](https://github.com/chrisryugj/kordoc) — HWP/HWPX → Markdown 파서. 사용자 참조 hwpx 분석 시 활용.
 - [Hancom HWPX 공식 문서](https://www.hancom.com/) — HWPX 5.1.3 스펙
-- [Anthropic Claude Skills](https://docs.claude.com/) — Claude 호환 진입점 형식
+- [Anthropic Claude Skills](https://docs.claude.com/) — 이 스킬의 진입점 형식
 
 ---
 
@@ -420,7 +442,6 @@ Claude에서는 `SKILL.md` 의 frontmatter 를 이용해 동일한 워크플로�
 | 2026-05-13 | **3.4.0** | **공공기관 문서서식 유지 방식 통합** — 6단계 파이프라인으로 전환, 양식 슬롯 매핑 도입, templates 구조 재정리, 내장 표준 양식 추가 |
 | 2026-05-13 | **3.5.0** | **풀버전 4대 함정 자동 검사** — build_full.py 신규 (위계 위반·빈 슬롯·마커 중복·페이지번호 미반영 해결), simulate_pages --values 인자 추가 |
 | 2026-05-14 | **3.6.0~3.6.11** | **양식별 핫픽스 누적 보정** — 표지·공문 제목 자간 압축 해소(wrap_long_titles.py), 목차 점선 깨짐 자동 보정(fix_toc_dots.py), 공문 본문 모든 위계 동적 확장(expand_gongmun_body.py), Skeleton 결함 자동 보정(fix_skeleton_defects.py), 1p 보고서 마커 자동 정규화(normalize_1p_markers.py) 등 다수 핫픽스 (상세: [CHANGES.md](CHANGES.md)) |
-| 2026-05-19 | **3.7.0** | **Codex 포트 완성** — `AGENTS.md` 신규, `scripts/build_document.py` 통합 진입점 추가, README/참고문서의 삭제된 `compose_doc.py`·`layout_optimizer.py` 안내 정리, `fill_skeleton.py` 임시 작업 디렉터리 고유화로 동시 실행 충돌 방지 |
 
 ---
 
