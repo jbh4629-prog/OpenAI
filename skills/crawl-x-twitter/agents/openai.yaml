@@ -1,0 +1,3 @@
+display_name: Crawl X Twitter
+short_description: Crawl public X/Twitter evidence
+default_prompt: Crawl public X/Twitter posts for this account or query and summarize the evidence with source links.
