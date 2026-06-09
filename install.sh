@@ -10,6 +10,7 @@ SKILLS_REPO_DIR="${CODEX_SKILLS_REPO_DIR:-$HOME/codex-skills/OpenAI}"
 CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
 INSTALL_MODE="${CODEX_SKILLS_INSTALL_MODE:-copy}"
 WITH_PLUGINS="${CODEX_SKILLS_WITH_PLUGINS:-false}"
+WITH_LAZYCODEX="${CODEX_SKILLS_WITH_LAZYCODEX:-false}"
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -58,9 +59,23 @@ case "$WITH_PLUGINS" in
     ;;
 esac
 
+case "$WITH_LAZYCODEX" in
+  true|1|yes|YES|y|Y)
+    bootstrap_args+=(--with-lazycodex)
+    ;;
+  false|0|no|NO|n|N)
+    ;;
+  *)
+    echo "[codex-skills] invalid CODEX_SKILLS_WITH_LAZYCODEX: $WITH_LAZYCODEX" >&2
+    echo "[codex-skills] expected true or false" >&2
+    exit 1
+    ;;
+esac
+
 echo "[codex-skills] source: $skills_source_dir"
 echo "[codex-skills] CODEX_HOME: $CODEX_HOME_DIR"
 echo "[codex-skills] install mode: $INSTALL_MODE"
+echo "[codex-skills] with LazyCodex: $WITH_LAZYCODEX"
 
 CODEX_HOME="$CODEX_HOME_DIR" bash "$skills_source_dir/scripts/bootstrap.sh" "${bootstrap_args[@]}"
 

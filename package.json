@@ -1,0 +1,34 @@
+{
+  "name": "lazycodex-ai",
+  "version": "0.2.2",
+  "description": "Codex install alias for oh-my-openagent. Run `npx lazycodex-ai install` to set up the Codex platform.",
+  "type": "module",
+  "bin": {
+    "lazycodex-ai": "bin/lazycodex-ai.js"
+  },
+  "files": [
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "pack:dry-run": "npm pack --dry-run"
+  },
+  "keywords": [
+    "codex",
+    "oh-my-openagent",
+    "ai-agents",
+    "orchestration"
+  ],
+  "author": "Yeongyu Kim",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/code-yeongyu/lazycodex.git"
+  },
+  "bugs": {
+    "url": "https://github.com/code-yeongyu/lazycodex/issues"
+  },
+  "homepage": "https://lazycodex.ai"
+}
