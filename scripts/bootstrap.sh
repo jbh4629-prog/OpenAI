@@ -4,18 +4,20 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  bash scripts/bootstrap.sh [--copy] [--force] [--with-plugins]
+  bash scripts/bootstrap.sh [--copy] [--force] [--with-plugins] [--with-lazycodex]
 
 Options:
-  --copy          Copy files instead of creating symlinks
-  --force         Replace existing install paths
-  --with-plugins  Also install local plugins into ~/plugins
+  --copy            Copy files instead of creating symlinks
+  --force           Replace existing install paths
+  --with-plugins    Also install local plugins into ~/plugins
+  --with-lazycodex  Install LazyCodex/OmO for Codex
 EOF
 }
 
 mode="link"
 force="false"
 with_plugins="false"
+with_lazycodex="${CODEX_SKILLS_WITH_LAZYCODEX:-false}"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -27,6 +29,9 @@ while [ $# -gt 0 ]; do
       ;;
     --with-plugins)
       with_plugins="true"
+      ;;
+    --with-lazycodex)
+      with_lazycodex="true"
       ;;
     -h|--help)
       usage
@@ -87,5 +92,37 @@ if [ "$with_plugins" = "true" ] && [ -d "$plugin_src" ]; then
     fi
   done
 fi
+
+install_lazycodex() {
+  if ! command -v node >/dev/null 2>&1; then
+    echo "LazyCodex install requires node on PATH" >&2
+    return 1
+  fi
+
+  if ! command -v bun >/dev/null 2>&1; then
+    echo "installing Bun runtime for LazyCodex"
+    curl -fsSL https://bun.sh/install | bash
+    export PATH="$HOME/.bun/bin:$PATH"
+  fi
+
+  if [ -x "$repo_root/bin/lazycodex-ai.js" ]; then
+    node "$repo_root/bin/lazycodex-ai.js" install --no-tui --codex-autonomous
+  else
+    npx --yes lazycodex-ai install --no-tui --codex-autonomous
+  fi
+}
+
+case "$with_lazycodex" in
+  true|1|yes|YES|y|Y)
+    install_lazycodex
+    ;;
+  false|0|no|NO|n|N)
+    ;;
+  *)
+    echo "Invalid CODEX_SKILLS_WITH_LAZYCODEX: $with_lazycodex" >&2
+    echo "Expected true or false" >&2
+    exit 1
+    ;;
+esac
 
 echo "done"

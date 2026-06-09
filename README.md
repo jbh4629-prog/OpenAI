@@ -16,6 +16,31 @@ Private source-of-truth repo for Codex skills and optional local plugins.
 3. Update the repo with `git pull`.
 4. Re-run `scripts/bootstrap.sh` only when new skills or plugins were added.
 
+## LazyCodex alias
+
+This repository also includes the `lazycodex-ai` npm entrypoint from
+[`code-yeongyu/lazycodex`](https://github.com/code-yeongyu/lazycodex). It is a
+thin Codex install alias for OmO.
+
+Verify the command expansion without installing anything:
+
+```bash
+npm test
+node bin/lazycodex-ai.js --dry-run install --no-tui --codex-autonomous
+```
+
+Install LazyCodex/OmO into the active Codex environment:
+
+```bash
+bash scripts/bootstrap.sh --with-lazycodex
+```
+
+Codespaces dotfiles can opt into the same install path:
+
+```bash
+CODEX_SKILLS_WITH_LAZYCODEX=true ./install.sh
+```
+
 ## Codespaces auto-install across repositories
 
 To make these skills available in every new GitHub Codespace, configure this repository as your Codespaces dotfiles repository:
@@ -57,6 +82,7 @@ crawl-naver-blog skill을 써서 "보관이사" 네이버 블로그 공개 글 1
 - `CODEX_HOME`: Codex home directory. Defaults to `$HOME/.codex`.
 - `CODEX_SKILLS_INSTALL_MODE`: `copy`, `link`, or `symlink`. Defaults to `copy`.
 - `CODEX_SKILLS_WITH_PLUGINS`: `true` or `false`. Defaults to `false`.
+- `CODEX_SKILLS_WITH_LAZYCODEX`: `true` or `false`. Defaults to `false`.
 - `CODEX_SKILLS_REPO_URL`: repo URL to clone when the installer is not already running from this repo.
 - `CODEX_SKILLS_REPO_DIR`: local clone path. Defaults to `$HOME/codex-skills/OpenAI`.
 
@@ -74,6 +100,7 @@ Use `--copy` if you want a one-time copy instead of symlinks.
 ```bash
 bash scripts/bootstrap.sh
 bash scripts/bootstrap.sh --with-plugins
+bash scripts/bootstrap.sh --with-lazycodex
 bash scripts/bootstrap.sh --copy
 ```
 
