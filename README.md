@@ -35,6 +35,13 @@ Install LazyCodex/OmO into the active Codex environment:
 bash scripts/bootstrap.sh --with-lazycodex
 ```
 
+The wrapper installs OmO with `--platform=codex` and does not force-enable
+Codex CLI's under-development `multi_agent_v2` feature. After install it
+normalizes `${CODEX_HOME:-$HOME/.codex}/config.toml` by removing stale
+`multi_agent_v2 = true`, `[features.multi_agent_v2].enabled = true`, and legacy
+`[agents].max_threads` settings while keeping the safe
+`max_concurrent_threads_per_session` tuning knob.
+
 Codespaces dotfiles can opt into the same install path:
 
 ```bash
