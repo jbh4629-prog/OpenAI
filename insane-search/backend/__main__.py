@@ -469,7 +469,7 @@ class StdioMCPServer:
 
     def run(self) -> int:
         for raw in sys.stdin:
-            raw = raw.strip()
+            raw = raw.lstrip("\ufeff").strip()
             if not raw:
                 continue
             try:
