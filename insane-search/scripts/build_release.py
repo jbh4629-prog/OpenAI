@@ -69,7 +69,10 @@ def main() -> int:
         shutil.copy2(ROOT / "Install-Insane-Search.cmd", bundle / "Install-Insane-Search.cmd")
     elif system == "macos":
         shutil.copy2(ROOT / "install.command", bundle / "install.command")
-    shutil.copy2(ROOT / "README-DISTRIBUTION.md", bundle / "README.md")
+    readme_source = ROOT / "README-DISTRIBUTION.md"
+    if not readme_source.exists():
+        readme_source = ROOT / "README.md"
+    shutil.copy2(readme_source, bundle / "README.md")
 
     skill_zip = bundle / "skill.zip"
     shutil.make_archive(str(skill_zip.with_suffix("")), "zip", root_dir=bundle / "skill", base_dir="insane-search")
