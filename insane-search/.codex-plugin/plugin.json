@@ -1,0 +1,37 @@
+{
+  "name": "insane-search",
+  "version": "0.17.0+codex.20260921061646",
+  "description": "Read-only public-web retrieval through the original adaptive Insane Search engine.",
+  "author": {
+    "name": "fivetaku",
+    "url": "https://github.com/fivetaku"
+  },
+  "homepage": "https://github.com/fivetaku/insane-search",
+  "repository": "https://github.com/fivetaku/insane-search",
+  "license": "MIT",
+  "keywords": [
+    "web-retrieval",
+    "mcp",
+    "public-web",
+    "continuation"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Insane Search",
+    "shortDescription": "Adaptive read-only public-web retrieval.",
+    "longDescription": "Use the original adaptive retrieval engine through one MCP surface with backend-selected core or full-parity execution.",
+    "developerName": "fivetaku",
+    "category": "Productivity",
+    "capabilities": [
+      "Public web retrieval",
+      "Route evidence",
+      "Continuation"
+    ],
+    "defaultPrompt": [
+      "Investigate this public URL and cite the actual content.",
+      "Continue this long public document until unresolved routes are checked.",
+      "Find public X posts related to this query."
+    ]
+  },
+  "mcpServers": "./.mcp.json"
+}
