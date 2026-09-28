@@ -50,7 +50,9 @@ $Requests = @(
 )
 $Smoke = ($Requests -join "`n") | & $Exe
 if ($LASTEXITCODE -ne 0) { throw "Frozen MCP smoke test failed." }
-if ($Smoke -notmatch '"serverInfo"' -or $Smoke -notmatch 'Example Domain') {
+$SmokeText = $Smoke -join "`n"
+if ($SmokeText -notmatch '"serverInfo"' -or $SmokeText -notmatch 'Example Domain') {
+  Write-Host $SmokeText
   throw "Frozen MCP smoke test returned unexpected output."
 }
 
