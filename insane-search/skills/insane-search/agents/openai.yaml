@@ -1,0 +1,3 @@
+interface:
+  display_name: "Insane Search"
+  short_description: "Adaptive read-only public-web retrieval with route evidence and continuation."
