@@ -34,8 +34,11 @@ if ($Python.Count -eq 2) {
 $Vpy = Join-Path $Venv "Scripts\python.exe"
 
 & $Vpy -m pip install --upgrade pip
+if ($LASTEXITCODE -ne 0) { throw "pip upgrade failed." }
 & $Vpy -m pip install -r requirements-build.txt
+if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed." }
 & $Vpy scripts\build_release.py --clean
+if ($LASTEXITCODE -ne 0) { throw "Windows release build failed." }
 
 $Exe = Join-Path $Root "dist\insane-search-windows-x64\runtime\insane-search-mcp.exe"
 if (-not (Test-Path $Exe)) { throw "Build completed without expected executable: $Exe" }
