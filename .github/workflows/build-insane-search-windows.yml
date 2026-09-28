@@ -1,0 +1,51 @@
+name: Build Insane Search Windows x64
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "insane-search/**"
+      - ".github/workflows/build-insane-search-windows.yml"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout pinned upstream Insane Search engine
+        uses: actions/checkout@v4
+        with:
+          repository: fivetaku/insane-search
+          ref: c020292fedcf1213d815acceacf600402fe72332
+          path: _upstream-insane-search
+
+      - name: Assemble pinned engine into Windows overlay
+        shell: powershell
+        run: |
+          $Dst = "insane-search\skills\insane-search"
+          New-Item -ItemType Directory -Force -Path "$Dst\references" | Out-Null
+          Copy-Item -Recurse -Force "_upstream-insane-search\skills\insane-search\engine" "$Dst\engine"
+          Copy-Item -Recurse -Force "_upstream-insane-search\skills\insane-search\references\*" "$Dst\references"
+          Copy-Item -Force "_upstream-insane-search\LICENSE" "insane-search\LICENSE"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          architecture: "x64"
+          cache: "pip"
+          cache-dependency-path: insane-search/requirements-build.txt
+
+      - name: Build and smoke-test Windows package
+        shell: powershell
+        working-directory: insane-search
+        run: .\build-windows.ps1
+
+      - name: Upload Windows release
+        uses: actions/upload-artifact@v4
+        with:
+          name: insane-search-windows-x64
+          path: |
+            insane-search/dist/insane-search-windows-x64.zip
+            insane-search/dist/insane-search-windows-x64.sha256
+          if-no-files-found: error
