@@ -1,0 +1,9 @@
+requests>=2.32
+curl-cffi>=0.7
+beautifulsoup4>=4.12
+PyYAML>=6.0
+markdownify>=0.13
+pypdf>=5.0
+pdfplumber>=0.11
+resiliparse>=0.15
+yt-dlp>=2025.1
